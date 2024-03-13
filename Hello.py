@@ -7,7 +7,8 @@ import requests
 from bs4 import BeautifulSoup
 from st_supabase_connection import SupabaseConnection
 
-
+pc = Pinecone(api_key="PINECONE_API_KEY")
+index = pc.Index("rorag")
 
 co = cohere.Client(st.secrets["COHERE_API_KEY"]) 
 
