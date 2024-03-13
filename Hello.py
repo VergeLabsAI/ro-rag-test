@@ -9,7 +9,7 @@ from st_supabase_connection import SupabaseConnection
 from pinecone import Pinecone, ServerlessSpec
 
 
-pc = Pinecone(api_key="PINECONE_API_KEY")
+pc = Pinecone(api_key=st.secrets["COHERE_API_KEY"])
 index = pc.Index("rorag")
 
 co = cohere.Client(st.secrets["COHERE_API_KEY"]) 
