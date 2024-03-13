@@ -95,7 +95,7 @@ def initialize_session_state() :
         prompt = """You are an AI assistant for ReachOut Australia, an organisation that helps young Australians with issues related to Mental Health. You have been provided with documents and citations from the ReachOut website. Do not speak outside this context. Only answer to the questions related to the material mentioned.
 If you don't know the answer to any query, just say you don't know. DO NOT try to make up an answer. DO NOT say you will continue searching for relevant infromation.
 You should not say that you are an AI or assistant, just respond with the answer.
-I want you to respond with markdown so the result cna be nicely presented on a website.
+I want you to respond with markdown so the result can be nicely presented on a website.
 If the question is not related to the context, politely respond that you are tuned to only answer questions that are related to the context."""
 
        # st.session_state.chat_history.append({"role": "User", "message": st.session_state.initial_prompt})
@@ -120,33 +120,60 @@ def on_click_callback():
         st.session_state.input_value = ""
         st.session_state.initial_message_sent = True
 
-        with st.spinner('Generating response...'):  
-                llm_response = co.chat( 
+        with st.spinner('Generating response...'):
+                # create the query embedding
+                xq = co.embed(
+                    texts=[customer_prompt],
+                    model='embed-english-v3.0',
+                    input_type='search_query',
+                    truncate='END'
+                ).embeddings
+
+                # query, returning the top 10 most similar results
+                res = index.query(vector = xq, top_k=6, include_metadata=True)
+
+                docs_retrieved = [result.metadata['Text'] for result in res.matches]
+                #docs_retrieved
+
+                urls_retrieved = [result.metadata['Link'] for result in res.matches]
+                #urls_retrieved
+
+                titles_retrieved = [result.metadata['Title'] for result in res.matches]
+                #titles_retrieved
+
+                # retrieved documents
+                documents = [
+                    {"title": titles_retrieved[0], "snippet": docs_retrieved[0], "url": urls_retrieved[0]},
+                    {"title": titles_retrieved[1], "snippet": docs_retrieved[1], "url": urls_retrieved[1]},
+                    {"title": titles_retrieved[2], "snippet": docs_retrieved[2], "url": urls_retrieved[2]},
+                    {"title": titles_retrieved[3], "snippet": docs_retrieved[3], "url": urls_retrieved[3]},
+                    {"title": titles_retrieved[4], "snippet": docs_retrieved[4], "url": urls_retrieved[4]},
+                    {"title": titles_retrieved[5], "snippet": docs_retrieved[5], "url": urls_retrieved[5]},
+                ]
+
+                llm_response = co.chat(
                     message=customer_prompt,
-                    model='command',
-                    temperature=0.3,
-                    preamble_override=st.session_state.initial_prompt,
-                    # return_prompt=True,
+                    documents=documents,
+                    preamble=st.session_state.initial_prompt,
                     chat_history=st.session_state.chat_history,
-                    prompt_truncation = 'auto',
-                    connectors=[{"id": "web-search", "options": {"site": "au.reachout.com"}}],
-                    # stream=True,
-                )
+                    model="command-r",
+                    temperature=0.1
+                    )
                 
-        st.session_state.chat_history.append({"role": "User", "message": customer_prompt})
-        st.session_state.chat_history.append({"role": "Chatbot", "message": llm_response.text})
+                st.session_state.chat_history.append({"role": "User", "message": customer_prompt})
+                st.session_state.chat_history.append({"role": "Chatbot", "message": llm_response.text})
 
-        # Generating markdown output with unique URLs
-        unique_urls = set()
-        markdown_output_unique = '<ul>'
+                # Generating markdown output with unique URLs
+                unique_urls = set()
+                markdown_output_unique = '<ul>'
 
-        for item in llm_response.documents:
-            if item['url'] not in unique_urls:
-                markdown_output_unique += f'<li><a href="{item["url"]}">{item["title"]}</a></li>'
-                unique_urls.add(item['url'])
-        markdown_output_unique += '</ul>'
-        
-        st.session_state.chat_history.append({"role": "Documents", "message": markdown_output_unique})
+                for item in llm_response.documents:
+                    if item['url'] not in unique_urls:
+                        markdown_output_unique += f'<li><a href="{item["url"]}">{item["title"]}</a></li>'
+                        unique_urls.add(item['url'])
+                markdown_output_unique += '</ul>'
+                
+                st.session_state.chat_history.append({"role": "Documents", "message": markdown_output_unique})
 
         # Return next steps from website
         # Check if there are any documents
@@ -173,9 +200,9 @@ def on_click_callback():
   <li> <Question 3>? </li>
   </ul>'
   """,
-                    model='command',
+                    model='command-r',
                     temperature=0.02,
-                    preamble_override="""You are an AI assistant for ReachOut Australia, an organisation that helps young Australians with issues related to Mental Health. You have been provided with documents and citations from the ReachOut website. Do not speak outside this context. Only answer to the questions related to the material mentioned.
+                    preamble="""You are an AI assistant for ReachOut Australia, an organisation that helps young Australians with issues related to Mental Health. You have been provided with documents and citations from the ReachOut website. Do not speak outside this context. Only answer to the questions related to the material mentioned.
 If you don't know the answer to any query, just say you don't know. DO NOT try to make up an answer. DO NOT say you will continue searching for relevant information.
 You should not say that you are an AI or assistant, just respond with the answer.
 I want you to respond with markdown so the result can be nicely presented on a website.
