@@ -4,4 +4,4 @@ cohere==4.55
 bs4==0.0.1
 st-supabase-connection==1.2.0
 requests==2.31.0
-pinecone==3.1.0
+pinecone-client==3.1.0
