@@ -160,8 +160,27 @@ def on_click_callback():
                     temperature=0.1
                     )
                 
+                edit_text = llm_response.text
+                citations = llm_response.citations
+
+                # Sort citations in reverse order to avoid messing up indices when replacing
+                citations.sort(key=lambda c: c["start"], reverse=True)
+
+                # Replace citation text with markdown links
+                for citation in citations:
+                    start, end = citation["start"], citation["end"]
+                    citation_text = edit_text[start:end]
+                    document_ids = citation["document_ids"]
+                    # Assuming document_ids contains only one document ID
+                    document_id = document_ids[0]
+                    document = next(doc for doc in llm_response.documents if doc["id"] == document_id)
+                    url = document["url"]
+                    edit_text = edit_text[:start] + f"[{citation_text}]({url})" + edit_text[end:]
+                
                 st.session_state.chat_history.append({"role": "User", "message": customer_prompt})
-                st.session_state.chat_history.append({"role": "Chatbot", "message": llm_response.text})
+                st.session_state.chat_history.append({"role": "Chatbot", "message": edit_text})
+
+                #edit_text
 
                 # Generating markdown output with unique URLs
                 unique_urls = set()
@@ -248,7 +267,7 @@ def main():
                                                          else 'references-circle.png' if chat["role"] == 'Documents' 
                                                          else 'ns.png' if chat["role"] == 'NextSteps'
                                                          else 'qmark.png'}" width=32 height=32>
-                <div class = "chatBubble {'adminBubble' if chat["role"] != 'User' else 'humanBubble'}">&#8203; {msg}</div>
+                <div class = "chatBubble {'adminBubble' if chat["role"] != 'User' else 'humanBubble'}">&#8203; <p>{msg}</p></div>
             </div>"""
             st.markdown(div, unsafe_allow_html=True)
             
